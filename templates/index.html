@@ -5,8 +5,7 @@
     <meta charset="utf-8">
     <title>{{ title }}</title>
     {{ bokeh_css }}
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.css" rel="stylesheet" type="text/css">
-    {{ bokeh_js }}
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.css" rel="stylesheet" type="text/css"> {{ bokeh_js }}
     <style>
         .loader {
             border: 8px solid #f3f3f3;
@@ -23,6 +22,12 @@
             padding: 5px 0;
             text-align: center;
             border: 3px solid green;
+        }
+
+        .DivWithScroll {
+            height: 120px;
+            overflow: scroll;
+            overflow-x: hidden;
         }
 
         /* Safari */

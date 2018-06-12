@@ -201,6 +201,7 @@ word3 = TextInput(width=200, title="+")
 calculateAnalogy = Button(label='Equals', button_type='success', width=60)
 equals = Div(text=" ", width=120)
 equals.css_classes = ["center"]
+resultText.css_classes = ["DivWithScroll"]
 analogy = column(word1,word2,word3,row(calculateAnalogy,Spacer(width=20),equals))
 tsneLayout = layout([
     [p2, analogy, Spacer(width=25), widgetbox(resultText, width=200)],
@@ -315,7 +316,7 @@ scode = """
     mots = %s;
     console.log(mots[cb_data.source.selected.indices[0]]);
     """ % (words)
-#taptool.callback = CustomJS(args=dict(source=source),code = scode)
+# taptool.callback = CustomJS(args=dict(source=source),code = scode)
 
 # T-SNE representation Function
 def tsneProcess(source=ds, vectors=vectors):
