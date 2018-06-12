@@ -182,6 +182,7 @@ p2 = figure(plot_height=400, x_range=(-50, 50), y_range=(-50, 50), tools=TOOLS, 
 p2_circle = p2.circle('x', 'y', source=sourceTSNE, color='#053061', fill_alpha=0.6)
 p2_circle.selection_glyph = selected_circle
 p2.add_layout(color_bar_p2, 'left')
+p3 = Network(label="label", edges="edges", values="values", color="color", data_source=sour, width=450, height=400)
 tsnePerplexity = Slider(start=5, end=100, value=30, step=1, width=120, title="Perplexity")
 tsneLearning = Slider(start=10, end=1000, value=200, step=1, width=120, title="Learning Rate")
 tsneIteration = Slider(start=300, end=5000, value=500, step=50, width=120, title="Iterations")
@@ -202,9 +203,10 @@ calculateAnalogy = Button(label='Equals', button_type='success', width=60)
 equals = Div(text=" ", width=120)
 equals.css_classes = ["center"]
 resultText.css_classes = ["DivWithScroll"]
-analogy = column(word1,word2,word3,row(calculateAnalogy,Spacer(width=20),equals))
+p3.css_classes = ["blackBorder"]
+analogy = column(word1, word2, word3, row(calculateAnalogy, Spacer(width=20), equals), widgetbox(resultText, width=250))
 tsneLayout = layout([
-    [p2, analogy, Spacer(width=25), widgetbox(resultText, width=200)],
+    [p2, analogy, p3],
     [tsnePerplexity, Spacer(width=20), tsneLearning, Spacer(width=20), tsneIteration, Spacer(width=20), tsneApply, Spacer(width=20), widgetbox(tsneLoading, width=30)],
     [tsneSpeed, Spacer(width=20), pauseB, Spacer(width=10), startB, Spacer(width=10), stopB, Spacer(width=20), iterationCount],
 ])
@@ -212,9 +214,8 @@ tab2 = Panel(child=tsneLayout, title="t-SNE")
 renderer = p2.select(dict(type=GlyphRenderer))
 ds = renderer[0].data_source
 
-p3 = Network(label="label", edges="edges", values="values", color="color", data_source=sour, width=900, height=550)
-tab3 = Panel(child=p3,title="Network")
-tabs = Tabs(tabs=[tab1, tab2, tab3])
+# tab3 = Panel(child=p3,title="Network")
+tabs = Tabs(tabs=[tab1, tab2])
 '''
 #testing analogies
 vec = [x1-x2+x3 for x1,x2,x3 in zip(vectors[563],vectors[313],vectors[513])]
@@ -400,7 +401,7 @@ def addNeighborNodes(index, vectors=vectors[0:number_of_elements]):
     sortedSim = sorted(similarityList, key=lambda l:l[1], reverse=True)
     color = generateColor()
     for i in range(1, number_of_neighbors):
-        print(sortedSim[i][0], sour.data['index'], sour.data['edges'][index])
+        #print(sortedSim[i][0], sour.data['index'], sour.data['edges'][index])
         if (sortedSim[i][0] in sour.data['index']) and (sour.data['index'].index(sortedSim[i][0])+1 not in sour.data['edges'][index]):
             indice = sour.data['index'].index(sortedSim[i][0])
             sour.data['edges'][indice].append(index+1)

@@ -20,7 +20,10 @@ OPTIONS =
     }
     nodes: {
         shape: 'dot',
-        size: 20
+        size: 20,
+        font: {
+            strokeWidth: 1.5
+        }
     }
     edges: {
         color: {
@@ -61,7 +64,8 @@ export class NetworkView extends LayoutDOMView
             nodes.add({
                 id: i,
                 label: source.get_column(@model.label)[i],
-                color: source.get_column(@model.color)[i]
+                color: source.get_column(@model.color)[i],
+                title: source.get_column(@model.label)[i]
             })
             for j in [0...source.get_column(@model.edges)[i].length]
                 edges.add({
