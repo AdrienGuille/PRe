@@ -362,6 +362,7 @@ l = layout([
   [tabs],
 ], sizing_mode='scale_width')
 curdoc().add_root(l)
+curdoc().title = "Embedding"
 
 animation = None
 def animate():
