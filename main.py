@@ -1,5 +1,6 @@
 import io
 from gensim.models import FastText
+from gensim.models.utils_any2vec import _ft_hash, _compute_ngrams
 from NetworkVisjs import Network
 from time import time
 import numpy as np
@@ -121,15 +122,30 @@ List = [word_tokenize(t) for t in sent_tokenize(txt)]
 List = to_lowercase(List)
 model = FastText(List, sg=1, size=300, workers=4, min_count=1)
 '''
-model = FastText.load_fasttext_format('PRe_new/model/model.bin', encoding='ISO-8859-1')
+model = FastText.load_fasttext_format('PRe_new/model/model.bin', encoding='ISO-8859-15')
 ## model = fasttext.load_model('PRe/model/model.bin')
 ##
 print("Data loaded ...")
 # vectors = [list(line) for line in data.values()]
 # words = list(data)
-number_of_elements = 1000
+number_of_elements = 2000
 vectors = model.wv.syn0
 words = model.wv.index2word
+ngrams = []
+vectors_ngrams = []
+words_ngrams = []
+for word in words:
+    ngrams += _compute_ngrams(word, model.min_n, model.max_n)
+ngrams = set(ngrams)
+print('done ngrams...')
+i=0
+for ngram in ngrams:
+    ngram_hash = _ft_hash(ngram) % model.bucket
+    if ngram_hash in model.wv.hash2index:
+        i += 1
+        words_ngrams.append(ngram)
+        vectors_ngrams.append(model.wv.syn0_ngrams[model.wv.hash2index[ngram_hash]])
+print(words_ngrams[1], vectors_ngrams[1])
 # del model
 # PCA Test
 pca = PCA(n_components=2)
@@ -194,6 +210,8 @@ stopB = Button(label='Stop', button_type='success', width=60)
 tsneLoading = Div()
 iterationCount = Div()
 resultText = Div()
+fileInput = Div()
+fileInput.text = '<input name="monFichier" type="file">'
 minus = Div(text='-',width=15)
 plus = Div(text='+',width=15)
 word1 = TextInput(width=200, title="Analogy")
