@@ -137,15 +137,17 @@ words_ngrams = []
 for word in words:
     ngrams += _compute_ngrams(word, model.min_n, model.max_n)
 ngrams = set(ngrams)
-print('done ngrams...')
+print('Ngrams done ...')
 i=0
 for ngram in ngrams:
     ngram_hash = _ft_hash(ngram) % model.bucket
     if ngram_hash in model.wv.hash2index:
         i += 1
         words_ngrams.append(ngram)
-        vectors_ngrams.append(model.wv.syn0_ngrams[model.wv.hash2index[ngram_hash]])
-print(words_ngrams[1], vectors_ngrams[1])
+        vectors_ngrams.append(model.wv.vectors_ngrams[model.wv.hash2index[ngram_hash]])
+gr = _compute_ngrams(words[1799], model.min_n, model.max_n)
+for g in gr:
+    print(words[1799], g, model.wv.similarity(words[100],g))
 # del model
 # PCA Test
 pca = PCA(n_components=2)
@@ -186,21 +188,21 @@ Cpalette = ['#E72018','#E17317','#DCC317','#9FD716','#4CD216','#15CC2D','#15C776
 lcm = LinearColorMapper(palette=Cpalette, low=0, high=1)
 color_bar_p = ColorBar(color_mapper=lcm, location=(0, 0))
 color_bar_p2 = ColorBar(color_mapper=lcm, location=(0, 0))
-selected_circle = Circle(fill_alpha=1, fill_color={'field' : 'color', 'transform':lcm}, line_color={'field' : 'color', 'transform':lcm})
+selected_circle = Circle(radius=2000, fill_alpha=1, fill_color={'field' : 'color', 'transform':lcm}, line_color={'field' : 'color', 'transform':lcm})
 
 p = figure(plot_height=400, tools=TOOLS, output_backend="webgl", active_scroll='wheel_zoom')
-p_circle = p.circle('x', 'y', source=source, color='#053061', fill_alpha=0.6)
+p_circle = p.circle('x', 'y', size=5, source=source, color='#053061', fill_alpha=0.5)
 p_circle.selection_glyph = selected_circle
 p.add_layout(color_bar_p, 'left')
 p.axis.visible = False
 tab1 = Panel(child=p, title="PCA")
 
 p2 = figure(plot_height=400, x_range=(-50, 50), y_range=(-50, 50), tools=TOOLS, output_backend="webgl", active_scroll='wheel_zoom')
-p2_circle = p2.circle('x', 'y', source=sourceTSNE, color='#053061', fill_alpha=0.6)
+p2_circle = p2.circle('x', 'y', size=5, source=sourceTSNE, color='#053061', fill_alpha=0.5)
 p2_circle.selection_glyph = selected_circle
 p2.add_layout(color_bar_p2, 'left')
 p2.axis.visible = False
-p3 = Network(label="label", edges="edges", values="values", color="color", data_source=sour, width=650, height=375)
+p3 = Network(label="label", edges="edges", values="values", color="color", data_source=sour, width=650, height=390)
 tsnePerplexity = Slider(start=5, end=100, value=30, step=1, width=120, title="Perplexity")
 tsneLearning = Slider(start=10, end=1000, value=200, step=1, width=120, title="Learning Rate")
 tsneIteration = Slider(start=300, end=5000, value=500, step=50, width=120, title="Iterations")
@@ -297,7 +299,7 @@ def handlerTSNE(attr, old, new, vectors=vectors[0:number_of_elements]):
             sour.data['color'].append(color)
         p2_circle.data_source.selected.indices = l
         p2_circle.data_source.trigger('selected',None,p2_circle.data_source.selected)
-        print(model.wv.most_similar(words[wordIndex]))
+        # print(model.wv.most_similar(words[wordIndex]))
         sour.trigger('data', None, sour)
         handlerTSNE.update = False
 
@@ -313,10 +315,9 @@ def handler(attr, old, new, vectors=vectors[0:number_of_elements]):
         l = [new.indices[0]]
         for i in range(1, number_of_neighbors):
             l.append(int(sortedSim[i][0]))
-            similarities = similarities + words[int(sortedSim[i][0])] + " : " + "{0:.5f}".format(sortedSim[i][1]) + "<br/>"
         p_circle.data_source.selected.indices = l
         p_circle.data_source.trigger('selected',None,p_circle.data_source.selected)
-        print(model.wv.most_similar(words[wordIndex]))
+        # print(model.wv.most_similar(words[wordIndex]))
         handler.update = False
         
 handlerTSNE.update = False
@@ -427,12 +428,11 @@ def addNeighborNodes(index, vectors=vectors[0:number_of_elements]):
     sour.trigger('data', None, sour)
 
 def selectNode(attr, old, new):
-    print(new)
     addNeighborNodes(new)
 
 def calcAnalogy():
     word = model.wv.most_similar(positive=[word1.value,word3.value], negative=[word2.value])
-    print(word)
+    # print(word)
     equals.text = "<b> <center>"+word[0][0]+"</center> </b>"
 
 pauseB.on_click(destroyAnimation)
