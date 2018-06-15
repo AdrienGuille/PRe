@@ -128,7 +128,7 @@ model = FastText.load_fasttext_format('PRe_new/model/model.bin', encoding='ISO-8
 print("Data loaded ...")
 # vectors = [list(line) for line in data.values()]
 # words = list(data)
-number_of_elements = 2000
+number_of_elements = 1000
 vectors = model.wv.syn0
 words = model.wv.index2word
 ngrams = []
@@ -220,12 +220,14 @@ word2 = TextInput(width=200, title="-")
 word3 = TextInput(width=200, title="+")
 calculateAnalogy = Button(label='Equals', button_type='success', width=60)
 equals = Div(text=" ", width=120)
+searchBox = TextInput(width=150, placeholder="Search ...")
+searchButton = Button(label='Search', button_type='success', width=60)
 equals.css_classes = ["center"]
 p3.css_classes = ["blackBorder"]
 analogy = column(word1, word2, word3, row(calculateAnalogy, Spacer(width=20), equals))
 tsneLayout = layout([
     [p2, p3],
-    [tsnePerplexity, Spacer(width=20), tsneLearning, Spacer(width=20), tsneIteration, Spacer(width=20), tsneApply, Spacer(width=20), widgetbox(tsneLoading, width=30)],
+    [tsnePerplexity, Spacer(width=20), tsneLearning, Spacer(width=20), tsneIteration, Spacer(width=20), tsneApply, Spacer(width=20), widgetbox(tsneLoading, width=30), Spacer(width=100), widgetbox(searchBox, searchButton)],
     [tsneSpeed, Spacer(width=20), pauseB, Spacer(width=10), startB, Spacer(width=10), stopB, Spacer(width=20), widgetbox(iterationCount, width=60)],
 ])
 tab2 = Panel(child=tsneLayout, title="t-SNE")
@@ -322,14 +324,6 @@ def handler(attr, old, new, vectors=vectors[0:number_of_elements]):
         
 handlerTSNE.update = False
 handler.update = False
-p2_circle.data_source.on_change('selected',handlerTSNE)
-p_circle.data_source.on_change('selected',handler)
-
-scode = """
-    mots = %s;
-    console.log(mots[cb_data.source.selected.indices[0]]);
-    """ % (words)
-# taptool.callback = CustomJS(args=dict(source=source),code = scode)
 
 # T-SNE representation Function
 def tsneProcess(source=ds, vectors=vectors):
@@ -435,11 +429,69 @@ def calcAnalogy():
     # print(word)
     equals.text = "<b> <center>"+word[0][0]+"</center> </b>"
 
+def searchWord(vectors=vectors[0:number_of_elements], words=words[0:number_of_elements]):
+    word = searchBox.value
+    if (word in words):
+        handlerTSNE.update = True
+        wordIndex = words.index(word)
+        v = [cosSim( np.asarray([vectors[wordIndex]]), np.asarray([b]) )[0][0] for b in vectors]
+        similarityList = list(zip([i for i in range(0, len(vectors)-1)], v))
+        p2_circle.data_source.add(data=v,name='color')
+        sortedSim = sorted(similarityList, key=lambda l:l[1], reverse=True)
+        l = [wordIndex]
+        sour.data['label'] = [words[wordIndex]]
+        sour.data['edges'] = [[]]
+        sour.data['values'] = [[]]
+        sour.data['index'] = [wordIndex]
+        sour.data['color'] = [generateColor()]
+        color = generateColor()
+        for i in range(1, number_of_neighbors):
+            l.append(sortedSim[i][0])
+            sour.data['label'].append(words[sortedSim[i][0]])
+            sour.data['edges'].append([1])
+            sour.data['values'].append([sortedSim[i][1]])
+            sour.data['index'].append(sortedSim[i][0])
+            sour.data['color'].append(color)
+        p2_circle.data_source.selected.indices = l
+        p2_circle.data_source.trigger('selected',None,p2_circle.data_source.selected)
+        # print(model.wv.most_similar(words[wordIndex]))
+        sour.trigger('data', None, sour)
+        handlerTSNE.update = False
+    else:
+        handlerTSNE.update = True
+        newWordVector = model[searchBox.value]
+        v = [cosSim( np.asarray([newWordVector]), np.asarray([b]) )[0][0] for b in vectors]
+        similarityList = list(zip([i for i in range(0, len(vectors)-1)], v))
+        p2_circle.data_source.add(data=v,name='color')
+        sortedSim = sorted(similarityList, key=lambda l:l[1], reverse=True)
+        l = [sortedSim[0][0]]
+        sour.data['label'] = [words[sortedSim[0][0]]]
+        sour.data['edges'] = [[]]
+        sour.data['values'] = [[]]
+        sour.data['index'] = [sortedSim[0][0]]
+        sour.data['color'] = [generateColor()]
+        color = generateColor()
+        for i in range(1, number_of_neighbors):
+            l.append(sortedSim[i][0])
+            sour.data['label'].append(words[sortedSim[i][0]])
+            sour.data['edges'].append([1])
+            sour.data['values'].append([sortedSim[i][1]])
+            sour.data['index'].append(sortedSim[i][0])
+            sour.data['color'].append(color)
+        p2_circle.data_source.selected.indices = l
+        p2_circle.data_source.trigger('selected',None,p2_circle.data_source.selected)
+        # print(model.wv.most_similar(words[wordIndex]))
+        sour.trigger('data', None, sour)
+        handlerTSNE.update = False
+
 pauseB.on_click(destroyAnimation)
 startB.on_click(animate)
 stopB.on_click(stopAnimation)
 tsneSpeed.on_change('value', changeSpeed)
 tabs.on_change('active', tabChange)
 tsneApply.on_click(tsneProcess)
+p_circle.data_source.on_change('selected',handler)
+p2_circle.data_source.on_change('selected',handlerTSNE)
 p3.on_change('selected',selectNode)
 calculateAnalogy.on_click(calcAnalogy)
+searchButton.on_click(searchWord)

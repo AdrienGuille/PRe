@@ -71,8 +71,8 @@ export class NetworkView extends LayoutDOMView
                 edges.add({
                     from: i,
                     to: source.get_column(@model.edges)[i][j]-1,
-                    title: String((source.get_column(@model.values)[i][j]*10).toFixed 2),
-                    value: (source.get_column(@model.values)[i][j]*10).toFixed 2
+                    title: String((source.get_column(@model.values)[i][j]).toFixed 3),
+                    value: (source.get_column(@model.values)[i][j]       ).toFixed 3
                 })
     
     fun: (params) ->
