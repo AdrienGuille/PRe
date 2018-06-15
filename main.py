@@ -192,13 +192,15 @@ p = figure(plot_height=400, tools=TOOLS, output_backend="webgl", active_scroll='
 p_circle = p.circle('x', 'y', source=source, color='#053061', fill_alpha=0.6)
 p_circle.selection_glyph = selected_circle
 p.add_layout(color_bar_p, 'left')
+p.axis.visible = False
 tab1 = Panel(child=p, title="PCA")
 
 p2 = figure(plot_height=400, x_range=(-50, 50), y_range=(-50, 50), tools=TOOLS, output_backend="webgl", active_scroll='wheel_zoom')
 p2_circle = p2.circle('x', 'y', source=sourceTSNE, color='#053061', fill_alpha=0.6)
 p2_circle.selection_glyph = selected_circle
 p2.add_layout(color_bar_p2, 'left')
-p3 = Network(label="label", edges="edges", values="values", color="color", data_source=sour, width=450, height=400)
+p2.axis.visible = False
+p3 = Network(label="label", edges="edges", values="values", color="color", data_source=sour, width=650, height=375)
 tsnePerplexity = Slider(start=5, end=100, value=30, step=1, width=120, title="Perplexity")
 tsneLearning = Slider(start=10, end=1000, value=200, step=1, width=120, title="Learning Rate")
 tsneIteration = Slider(start=300, end=5000, value=500, step=50, width=120, title="Iterations")
@@ -209,9 +211,6 @@ startB = Button(label='Start', button_type='success', width=60)
 stopB = Button(label='Stop', button_type='success', width=60)
 tsneLoading = Div()
 iterationCount = Div()
-resultText = Div()
-fileInput = Div()
-fileInput.text = '<input name="monFichier" type="file">'
 minus = Div(text='-',width=15)
 plus = Div(text='+',width=15)
 word1 = TextInput(width=200, title="Analogy")
@@ -220,20 +219,19 @@ word3 = TextInput(width=200, title="+")
 calculateAnalogy = Button(label='Equals', button_type='success', width=60)
 equals = Div(text=" ", width=120)
 equals.css_classes = ["center"]
-resultText.css_classes = ["DivWithScroll"]
 p3.css_classes = ["blackBorder"]
-analogy = column(word1, word2, word3, row(calculateAnalogy, Spacer(width=20), equals), widgetbox(resultText, width=250))
+analogy = column(word1, word2, word3, row(calculateAnalogy, Spacer(width=20), equals))
 tsneLayout = layout([
-    [p2, analogy, p3],
+    [p2, p3],
     [tsnePerplexity, Spacer(width=20), tsneLearning, Spacer(width=20), tsneIteration, Spacer(width=20), tsneApply, Spacer(width=20), widgetbox(tsneLoading, width=30)],
-    [tsneSpeed, Spacer(width=20), pauseB, Spacer(width=10), startB, Spacer(width=10), stopB, Spacer(width=20), iterationCount],
+    [tsneSpeed, Spacer(width=20), pauseB, Spacer(width=10), startB, Spacer(width=10), stopB, Spacer(width=20), widgetbox(iterationCount, width=60)],
 ])
 tab2 = Panel(child=tsneLayout, title="t-SNE")
 renderer = p2.select(dict(type=GlyphRenderer))
 ds = renderer[0].data_source
 
-# tab3 = Panel(child=p3,title="Network")
-tabs = Tabs(tabs=[tab1, tab2])
+tab3 = Panel(child=analogy, title="Analogy")
+tabs = Tabs(tabs=[tab1, tab2, tab3])
 '''
 #testing analogies
 vec = [x1-x2+x3 for x1,x2,x3 in zip(vectors[563],vectors[313],vectors[513])]
@@ -283,7 +281,6 @@ def handlerTSNE(attr, old, new, vectors=vectors[0:number_of_elements]):
         similarityList = list(zip([i for i in range(0, len(vectors)-1)], v))
         p2_circle.data_source.add(data=v,name='color')
         sortedSim = sorted(similarityList, key=lambda l:l[1], reverse=True)
-        similarities = str(number_of_neighbors)+" neighbors of " + words[wordIndex] + " : <br/>"
         l = [new.indices[0]]
         sour.data['label'] = [words[wordIndex]]
         sour.data['edges'] = [[]]
@@ -293,7 +290,6 @@ def handlerTSNE(attr, old, new, vectors=vectors[0:number_of_elements]):
         color = generateColor()
         for i in range(1, number_of_neighbors):
             l.append(sortedSim[i][0])
-            similarities = similarities + words[sortedSim[i][0]] + " : " + "{0:.2f}".format(sortedSim[i][1]) + "<br/>"
             sour.data['label'].append(words[sortedSim[i][0]])
             sour.data['edges'].append([1])
             sour.data['values'].append([sortedSim[i][1]])
@@ -301,7 +297,6 @@ def handlerTSNE(attr, old, new, vectors=vectors[0:number_of_elements]):
             sour.data['color'].append(color)
         p2_circle.data_source.selected.indices = l
         p2_circle.data_source.trigger('selected',None,p2_circle.data_source.selected)
-        resultText.text = similarities
         print(model.wv.most_similar(words[wordIndex]))
         sour.trigger('data', None, sour)
         handlerTSNE.update = False
@@ -315,14 +310,12 @@ def handler(attr, old, new, vectors=vectors[0:number_of_elements]):
         p_circle.data_source.add(data=v,name='color')
         sortedSim = sorted(similarityList, key=lambda l:l[1], reverse=True)
         sortedSim = np.asarray([list(i) for i in sortedSim])
-        similarities = str(number_of_neighbors)+" neighbors of " + words[wordIndex] + " : <br/>"
         l = [new.indices[0]]
         for i in range(1, number_of_neighbors):
             l.append(int(sortedSim[i][0]))
             similarities = similarities + words[int(sortedSim[i][0])] + " : " + "{0:.5f}".format(sortedSim[i][1]) + "<br/>"
         p_circle.data_source.selected.indices = l
         p_circle.data_source.trigger('selected',None,p_circle.data_source.selected)
-        resultText.text = similarities
         print(model.wv.most_similar(words[wordIndex]))
         handler.update = False
         
