@@ -21,7 +21,6 @@ from bokeh.layouts import layout, column, row, Spacer, widgetbox
 from bokeh.models.widgets import Button, AutocompleteInput, TextInput, Panel, Tabs
 from bokeh.models.callbacks import CustomJS
 from bokeh.models.renderers import GlyphRenderer
-from bokeh.palettes import Plasma256
 from bokeh.server.server import BaseServer
 from bokeh.events import SelectionGeometry
 
@@ -37,8 +36,9 @@ def load_vectors(fname):
     return data
 
 # Storing each iteration for T-SNE
+
 positions = []
-X_iter = []
+iterations = []
 def _gradient_descent(objective, p0, it, n_iter,
                       n_iter_check=1, n_iter_without_progress=300,
                       momentum=0.8, learning_rate=200.0, min_gain=0.01,
@@ -122,13 +122,13 @@ List = [word_tokenize(t) for t in sent_tokenize(txt)]
 List = to_lowercase(List)
 model = FastText(List, sg=1, size=300, workers=4, min_count=1)
 '''
-model = FastText.load_fasttext_format('PRe_new/model/model.bin', encoding='ISO-8859-15')
+model = FastText.load_fasttext_format('PRe_git/model/model.bin', encoding='ISO-8859-15')
 ## model = fasttext.load_model('PRe/model/model.bin')
 ##
 print("Data loaded ...")
 # vectors = [list(line) for line in data.values()]
 # words = list(data)
-number_of_elements = 1000
+number_of_elements = 5000
 vectors = model.wv.syn0
 words = model.wv.index2word
 ngrams = []
@@ -145,9 +145,9 @@ for ngram in ngrams:
         i += 1
         words_ngrams.append(ngram)
         vectors_ngrams.append(model.wv.vectors_ngrams[model.wv.hash2index[ngram_hash]])
-gr = _compute_ngrams(words[1799], model.min_n, model.max_n)
+gr = _compute_ngrams(words[3098], model.min_n, model.max_n)
 for g in gr:
-    print(words[1799], g, model.wv.similarity(words[100],g))
+    print(words[3098], g, model.wv.similarity(words[3098],g))
 # del model
 # PCA Test
 pca = PCA(n_components=2)
@@ -170,13 +170,15 @@ sourceTSNE = ColumnDataSource(data=dict(
     color=['#053061' for i in range(0,number_of_elements)],
 ))
 sour = ColumnDataSource(data=dict(
-    label=['one','two','three'],
-    edges=[[2,3],[1],[3]],
-    values=[[0.5,0.2],[0.3],[0.78]],
-    index=[0,1,2],
-    color=['red', 'blue', 'red']
+    label=[],
+    edges=[],
+    values=[],
+    index=[],
+    color=[]
 ))
 print('source done ...')
+
+# Preparing Plot and UI elements
 TOOLS = "pan,wheel_zoom,zoom_in,zoom_out,box_zoom,reset,tap,save".split(
     ',')
 hover = HoverTool(tooltips=[
@@ -202,10 +204,10 @@ p2_circle = p2.circle('x', 'y', size=5, source=sourceTSNE, color='#053061', fill
 p2_circle.selection_glyph = selected_circle
 p2.add_layout(color_bar_p2, 'left')
 p2.axis.visible = False
-p3 = Network(label="label", edges="edges", values="values", color="color", data_source=sour, width=650, height=390)
+p3 = Network(label="label", edges="edges", values="values", color="color", data_source=sour, width=720, height=390)
 tsnePerplexity = Slider(start=5, end=100, value=30, step=1, width=120, title="Perplexity")
 tsneLearning = Slider(start=10, end=1000, value=200, step=1, width=120, title="Learning Rate")
-tsneIteration = Slider(start=300, end=5000, value=500, step=50, width=120, title="Iterations")
+tsneIteration = Slider(start=300, end=5000, value=1000, step=50, width=120, title="Iterations")
 tsneSpeed = Slider(start=10, end=100, value=70, step=1, width=120, title="Speed")
 tsneApply = Button(label='Apply', button_type='success', width=80)
 pauseB = Button(label='Pause', button_type='success', width=60)
@@ -236,44 +238,10 @@ ds = renderer[0].data_source
 
 tab3 = Panel(child=analogy, title="Analogy")
 tabs = Tabs(tabs=[tab1, tab2, tab3])
-'''
-#testing analogies
-vec = [x1-x2+x3 for x1,x2,x3 in zip(vectors[563],vectors[313],vectors[513])]
-analog = [cosSim(np.asarray([vec]), np.asarray([b]) )[0][0] for b in vectors]
-analogyList = list(zip([i for i in range(0,len(vectors)-1)], analog))
-sortedAna = sorted(analogyList,key=lambda l:l[1], reverse=True)
-print(words[563], words[313], words[513])
-for i in range(1,10):
-    print(words[sortedAna[i][0]])
-'''
+
 # Neighbors
 number_of_neighbors = 10
-#allSimilarity = cosSim(vectors)
 
-'''
-def neighbors(source=source, div=resultText, vectors=vectors[0:number_of_elements], cosSim=cosSim):
-    word = source.data['mots'][cb_data.source.selected.indices[0]]
-    wordIndex = cb_data.source.selected.indices[0]
-    print(cb_data)
-    v = [cosSim( np.asarray([vectors[wordIndex]]), np.asarray([b]) )[0][0] for b in vectors]
-    #similarityList = [[i,cosSim(vectors[wordIndex],vectors[i])] for i in range(0,len(vectors)) if i!=wordIndex]
-    similarityList = list(zip([i for i in range(0, len(vectors)-1)], v))
-    sortedSim = sorted(similarityList, key=lambda l:l[1], reverse=True)
-    similarities = "10 neighbors of " + word + " : <br/>"
-    for i in range(1, 10):
-        cb_data.source.selected.indices[i] = sortedSim[i][0]
-        similarities = similarities + \
-            words[sortedSim[i][0]] + " : " + \
-            "{0:.2f}".format(sortedSim[i][1]) + "<br/>"
-    div.text = similarities
-
-# Selection Event
-taptool = p.select(type=TapTool)
-taptool.callback = CustomJS.from_py_func(neighbors)
-
-taptool_TSNE = p2.select(type=TapTool)
-taptool_TSNE.callback = CustomJS.from_py_func(neighbors)
-'''
 def generateColor():
     color = "#"+''.join([random.choice('0123456789ABCDEF') for j in range(6)])
     return color
@@ -328,42 +296,35 @@ handler.update = False
 # T-SNE representation Function
 def tsneProcess(source=ds, vectors=vectors):
     global positions
-    global X_iter
+    global iterations
     positions = []
     tsneLoading.css_classes = ["loader"]
     TSNE_transform = TSNE(n_components=2, n_iter=tsneIteration.value, perplexity=tsnePerplexity.value, learning_rate=tsneLearning.value).fit_transform(vectors[0:number_of_elements])
     print("TSNE done ...")
-    X_iter = np.dstack(position.reshape(-1, 2) for position in positions)
-    print("X_iter done ...")
+    iterations = np.dstack(position.reshape(-1, 2) for position in positions)
+    print("iterations done ...")
     ds.data['x'] = TSNE_transform[:, 0]
     ds.data['y'] = TSNE_transform[:, 1]
     ds.trigger('data',ds.data,ds.data)
     tsneLoading.css_classes = []
 
 #T-SNE Animation Function
-iteration = 0
+iterationNumber = 0
 def tsne_animation(length=number_of_elements, div=iterationCount):
     global ds
-    global iteration
-    global X_iter
-    if iteration < X_iter.shape[2]:
+    global iterationNumber
+    global iterations
+    if iterationNumber < iterations.shape[2]:
         for i in range(0,length):
-            ds.data['x'][i] = X_iter[i][0][iteration]
-            ds.data['y'][i] = X_iter[i][1][iteration]
+            ds.data['x'][i] = iterations[i][0][iterationNumber]
+            ds.data['y'][i] = iterations[i][1][iterationNumber]
         
         ds.trigger('data',ds.data,ds.data)
-        iteration += 1
-        div.text = "Iteration N&#176 : " + str(iteration)
+        iterationCount += 1
+        div.text = "Iteration N&#176 : " + str(iterationNumber)
     else:
         stopAnimation()
 
-numberElement = TextInput(width=200, placeholder="Nombre d'iterations")
-changeNumberB = Button(label='Change')
-
-# output_file("Vector representation.html", title="Example of vector representation")
-l2 = layout([
-    [numberElement],
-], sizing_mode='scale_width')
 l = layout([
   [tabs],
 ], sizing_mode='scale_width')
