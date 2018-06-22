@@ -20,7 +20,7 @@ OPTIONS =
     }
     nodes: {
         shape: 'dot',
-        size: 20,
+        size: 15,
         font: {
             strokeWidth: 1.5
         }
