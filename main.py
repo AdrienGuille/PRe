@@ -19,7 +19,7 @@ from bokeh.io import curdoc
 from bokeh.plotting import figure, show, output_file, ColumnDataSource
 from bokeh.models import CustomJS, Slider, ColumnDataSource, WidgetBox, HoverTool, TapTool, Div, CDSView, GroupFilter, Selection, LinearColorMapper, Circle, ColorBar
 from bokeh.layouts import layout, column, row, Spacer, widgetbox
-from bokeh.models.widgets import Button, AutocompleteInput, TextInput, Panel, Tabs, Select
+from bokeh.models.widgets import Button, AutocompleteInput, TextInput, Panel, Tabs, Select, RadioGroup
 from bokeh.models.callbacks import CustomJS
 from bokeh.models.renderers import GlyphRenderer
 from bokeh.server.server import BaseServer
@@ -27,7 +27,7 @@ from bokeh.events import SelectionGeometry
 
 nltk.download('punkt')
 
-number_of_elements = 10000
+number_of_elements = 1000
 number_of_neighbors = 10
 
 model = None
@@ -49,12 +49,7 @@ def load_vectors(fname):
     return data
 
 # Storing each iteration for T-SNE
-
-
-def _gradient_descent(objective, p0, it, n_iter,
-                      n_iter_check=1, n_iter_without_progress=300,
-                      momentum=0.8, learning_rate=200.0, min_gain=0.01,
-                      min_grad_norm=1e-7, verbose=0, args=None, kwargs=None):
+def _gradient_descent(objective, p0, it, n_iter, n_iter_check=1, n_iter_without_progress=300, momentum=0.8, learning_rate=200.0, min_gain=0.01, min_grad_norm=1e-7, verbose=0, args=None, kwargs=None):
     if args is None:
         args = []
     if kwargs is None:
@@ -125,7 +120,7 @@ def to_lowercase(sentences):
 
 print("Starting execution ...")
 modelsList = []
-for file in os.listdir("PRe_git/model"):
+for file in os.listdir("new_layout/gensimModels"):
     if file.endswith(".bin"):
         modelsList.append(file[0:len(file)-4])
 #data = load_vectors("PRe/vectors/newWiki300.vec")
@@ -160,7 +155,7 @@ sourceNetwork = ColumnDataSource(data=dict(
     color=[]
 ))
 
-# Preparing Plots and UI elements
+## Preparing Plots and UI elements
 TOOLS = "pan,wheel_zoom,zoom_in,zoom_out,box_zoom,reset,tap,save".split(
     ',')
 hover = HoverTool(tooltips=[
@@ -174,6 +169,7 @@ color_bar_p = ColorBar(color_mapper=lcm, location=(0, 0))
 color_bar_p2 = ColorBar(color_mapper=lcm, location=(0, 0))
 selected_circle = Circle(radius=2000, fill_alpha=1, fill_color={'field' : 'color', 'transform':lcm}, line_color={'field' : 'color', 'transform':lcm})
 
+#PCA Plot
 p = figure(plot_width=600, plot_height=400, tools=TOOLS, output_backend="webgl", active_scroll='wheel_zoom')
 p_circle = p.circle('x', 'y', size=7, source=source, color='#053061', fill_alpha=0.5)
 p_circle.selection_glyph = selected_circle
@@ -182,25 +178,31 @@ p.axis.visible = False
 p.grid.visible = False
 tab1 = Panel(child=p, title="PCA")
 
+#TSNE Plot
 p2 = figure(plot_width=600, plot_height=400, x_range=(-50, 50), y_range=(-50, 50), tools=TOOLS, output_backend="webgl", active_scroll='wheel_zoom')
 p2_circle = p2.circle('x', 'y', size=7, source=sourceTSNE, color='#053061', fill_alpha=0.5)
 p2_circle.selection_glyph = selected_circle
 p2.add_layout(color_bar_p2, 'left')
 p2.axis.visible = False
 p2.grid.visible = False
+
+#Network
 p3 = Network(label="label", edges="edges", values="values", color="color", data_source=sourceNetwork, width=650, height=450)
+
+#Widgets
 tsnePerplexity = Slider(start=5, end=100, value=30, step=1, width=120, title="Perplexity")
 tsneLearning = Slider(start=10, end=1000, value=200, step=1, width=120, title="Learning Rate")
 tsneIteration = Slider(start=300, end=5000, value=1000, step=50, width=120, title="Iterations")
 tsneAnimationPosition = Slider(start=0, end=tsneIteration.value, step=1, width=400, title="Goto Iteration")
 tsneSpeed = Slider(start=10, end=100, value=70, step=1, width=120, title="Speed")
-neighborsNumber = Slider (start=3, end=20, value=10, width=120, title="N&#176 Neighbors")
+neighborsNumber = Slider (start=3, end=20, value=10, width=120, title="N° Neighbors")
 neighborsApply = Button(label='Apply', button_type='success', width=60)
 tsneApply = Button(label='Apply', button_type='success', width=80)
 pauseB = Button(label='Pause', button_type='success', width=60)
 startB = Button(label='Start', button_type='success', width=60)
 stopB = Button(label='Stop', button_type='success', width=60)
-modelSelect = Select(title="model", value="fil9", options=modelsList)
+modelSelect = Select(title="model", value="model", options=modelsList)
+tsneMetricSelect = Select(title="metric", value='cosine', width=120, options=['braycurtis', 'canberra', 'chebyshev', 'cityblock', 'correlation', 'cosine', 'dice', 'euclidean', 'hamming', 'jaccard', 'kulsinski', 'mahalanobis', 'matching', 'minkowski', 'rogerstanimoto', 'russellrao', 'seuclidean', 'sokalmichener', 'sokalsneath', 'sqeuclidean', 'yule'])
 tsneLoading = Div()
 LoadingDiv = Div()
 iterationCount = Div(width=100)
@@ -218,8 +220,8 @@ equals.css_classes = ["center"]
 analogy = column(word1, word2, word3, row(calculateAnalogy, Spacer(width=20), equals))
 tsneLayout = layout([
     [p2],
-    [tsnePerplexity, Spacer(width=20), tsneLearning, Spacer(width=20), tsneIteration, Spacer(width=20), tsneApply, Spacer(width=20), widgetbox(tsneLoading, width=30)],
-    [tsneSpeed, Spacer(width=20), pauseB, Spacer(width=10), startB, Spacer(width=10), stopB, Spacer(width=20), widgetbox(iterationCount, width=60)],
+    [tsnePerplexity, Spacer(width=10), tsneLearning, Spacer(width=10), tsneIteration, Spacer(width=10), widgetbox(tsneMetricSelect, width=120), Spacer(width=20), widgetbox(tsneLoading, width=30)],
+    [tsneSpeed, Spacer(width=10), pauseB, Spacer(width=10), startB, Spacer(width=10), stopB, Spacer(width=10), widgetbox(iterationCount, width=60), Spacer(width=10), tsneApply],
     [tsneAnimationPosition]
 ])
 tab2 = Panel(child=tsneLayout, title="t-SNE")
@@ -304,8 +306,8 @@ def loadModelandPCA(modelName=modelSelect.value):
     global sourceNetwork
 
     LoadingDiv.css_classes = ["loading"]
-
-    model = FastText.load_fasttext_format('PRe_git/model/'+modelName+'.bin', encoding='ISO-8859-15')
+    model = FastText.load('new_layout/gensimModels/'+modelName+'.bin')
+    # model = FastText.load_fasttext_format('PRe_git/model/'+modelName+'.bin', encoding='ISO-8859-15')
     ## model = fasttext.load_model('PRe/model/model.bin')
     print("Data loaded ...")
     # vectors = [list(line) for line in data.values()]
@@ -371,8 +373,8 @@ def tsneProcess():
     global vectors
 
     positions = []
-    tsneLoading.css_classes = ["loader"]
-    TSNE_transform = TSNE(n_components=2, n_iter=tsneIteration.value, perplexity=tsnePerplexity.value, learning_rate=tsneLearning.value).fit_transform(vectors[0:number_of_elements])
+    LoadingDiv.css_classes = ["loading"]
+    TSNE_transform = TSNE(n_components=2, n_iter=tsneIteration.value, perplexity=tsnePerplexity.value, learning_rate=tsneLearning.value, metric=tsneMetricSelect.value).fit_transform(vectors[0:number_of_elements])
     print("TSNE done ...")
     iterations = np.dstack(position.reshape(-1, 2) for position in positions)
     print("iterations done ...")
@@ -381,7 +383,7 @@ def tsneProcess():
     ds.trigger('data',ds.data,ds.data)
     tsneAnimationPosition.end = tsneIteration.value
     tsneAnimationPosition.value = tsneIteration.value
-    tsneLoading.css_classes = []
+    LoadingDiv.css_classes = []
 
 #T-SNE Animation Function
 iterationNumber = 0
@@ -406,6 +408,27 @@ l = layout([
   [p3, tabs],
   [widgetbox(searchBox, searchButton), Spacer(width=20), widgetbox(neighborsNumber, width=120), Spacer(width=20), widgetbox(modelSelect, width=80)],
   [LoadingDiv]
+], sizing_mode='fixed')
+
+d1 = Div(text="<h2>Choix d'un modele</h2>", width=500)
+d2 = Div(text="<h2>Choix d'un mot</h2>", width=500)
+d3 = Div(text="<h2>Visualisation globale des représentations</h2><br><h3>Vecteurs de dimension 100 projetés dans le plan selon :</h3>", width=500)
+projectionMethode = RadioGroup(labels=["la méthode t-SNE en deux dimensions", "les deux premiers axes principaux"], active=0)
+d4 = Div(text="<h2>Exploration des voisinages</h2><br><h3>Voisinages établis selon :</h3>", width=500)
+similarityMethode = RadioGroup(labels=["la similarité cosinus", "la distance euclidienne"], active=0)
+
+newLayout = layout([
+	[d1],
+	[modelSelect],
+	[d2],
+	[widgetbox(searchBox, searchButton)],
+	[d3],
+	[projectionMethode],
+	[p2],
+	[d4],
+	[similarityMethode],
+	[p3],
+	[LoadingDiv],
 ], sizing_mode='fixed')
 
 template = """
@@ -588,7 +611,7 @@ template = """
 {% endblock %}
 """
 
-curdoc().add_root(l)
+curdoc().add_root(newLayout)
 curdoc().title = "Embedding"
 curdoc().template = template
 
@@ -654,8 +677,13 @@ def changeNeighbors(attr, old, new):
 	global number_of_neighbors
 	number_of_neighbors = new
 
+def chargeModel():
+    loadModelandPCA(modelName=modelSelect.value)
+    tsneProcess()
+
 def changeModel(attr, old, new):
     loadModelandPCA(modelName=new)
+    tsneProcess()
 
 def calcAnalogy():
     word = model.wv.most_similar(positive=[word1.value,word3.value], negative=[word2.value])
@@ -737,4 +765,4 @@ p3.on_change('selected',selectNode)
 calculateAnalogy.on_click(calcAnalogy)
 searchButton.on_click(searchWord)
 
-curdoc().add_timeout_callback(loadModelandPCA,6000)
+curdoc().add_timeout_callback(chargeModel,5000)
