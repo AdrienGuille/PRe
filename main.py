@@ -200,7 +200,7 @@ tsneApply = Button(label='Apply', button_type='success', width=80)
 pauseB = Button(label='Pause', button_type='success', width=60)
 startB = Button(label='Start', button_type='success', width=60)
 stopB = Button(label='Stop', button_type='success', width=60)
-modelSelect = Select(title="model", value=modelsList[0][0], options=modelsList)
+modelSelect = Select(value=modelsList[0][0], options=modelsList)
 tsneMetricSelect = Select(title="metric", value='cosine', width=120, options=['braycurtis', 'canberra', 'chebyshev', 'cityblock', 'correlation', 'cosine', 'dice', 'euclidean', 'hamming', 'jaccard', 'kulsinski', 'mahalanobis', 'matching', 'minkowski', 'rogerstanimoto', 'russellrao', 'seuclidean', 'sokalmichener', 'sokalsneath', 'sqeuclidean', 'yule'])
 tsneLoading = Div()
 LoadingDiv = Div()
@@ -236,12 +236,12 @@ l = layout([
   [LoadingDiv]
 ], sizing_mode='fixed')
 
-d1 = Div(text="<h2>Choix d'un modele</h2>", width=500)
+d1 = Div(text="<h2>Choix d'un mod\u00E8le</h2>", width=500)
 d2 = Div(text="<h2>Choix d'un mot</h2>", width=500)
-d3 = Div(text="<h2>Visualisation globale des représentations</h2><br><h3>Vecteurs de dimension 100 projetés dans le plan selon :</h3>", width=500)
-projectionMethode = RadioGroup(labels=["la méthode t-SNE en deux dimensions", "les deux premiers axes principaux"], active=0)
-d4 = Div(text="<h2>Exploration des voisinages</h2><br><h3>Voisinages établis selon :</h3>", width=500)
-similarityMethode = RadioGroup(labels=["la similarité cosinus", "la distance euclidienne"], active=0)
+d3 = Div(text="<h2>Visualisation globale des repr\u00E9sentations</h2><br><h3>Vecteurs de dimension 100 projet\u00E9s dans le plan selon :</h3>", width=500)
+projectionMethode = RadioGroup(labels=["la m\u00E9thode t-SNE en deux dimensions", "les deux premiers axes principaux"], active=0)
+d4 = Div(text="<h2>Exploration des voisinages</h2><br><h3>Voisinages \u00E9tablis selon :</h3>", width=500)
+similarityMethode = RadioGroup(labels=["la similarit\u00E9 cosinus", "la distance euclidienne"], active=0)
 
 newLayout = layout([
 	[d1],
@@ -435,6 +435,7 @@ template = """
 </body>
 {% endblock %}
 """
+curdoc().add_root(LoadingDiv)
 curdoc().title = "Embedding"
 curdoc().template = template
 curdoc().add_root(newLayout)
@@ -457,6 +458,8 @@ def handlerTSNE(attr, old, new):
             v = [cosSim( np.asarray([vectors[wordIndex]]), np.asarray([b]) )[0][0] for b in vectors[0:number_of_elements]]
         similarityList = list(zip([i for i in range(0, len(vectors)-1)], v))
         p2_circle.data_source.add(data=v,name='color')
+        p_circle.data_source.add(data=v,name='color')
+        sourceTemp.add(data=v,name='color')
         sortedSim = sorted(similarityList, key=lambda l:l[1], reverse=(tsneMetricSelect.value != 'euclidean'))
         l = [new.indices[0]]
         sourceNetwork.data['label'] = [words[wordIndex]]
