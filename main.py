@@ -21,7 +21,7 @@ from bokeh.io import curdoc
 from bokeh.plotting import figure, show, output_file, ColumnDataSource
 from bokeh.models import CustomJS, Slider, ColumnDataSource, WidgetBox, HoverTool, TapTool, Div, CDSView, GroupFilter, Selection, LinearColorMapper, Circle, ColorBar
 from bokeh.layouts import layout, column, row, Spacer, widgetbox
-from bokeh.models.widgets import Button, AutocompleteInput, TextInput, Panel, Tabs, Select, RadioGroup
+from bokeh.models.widgets import Button, AutocompleteInput, TextInput, Panel, Tabs, Select, RadioGroup, DataTable, TableColumn
 from bokeh.models.callbacks import CustomJS
 from bokeh.models.renderers import GlyphRenderer
 from bokeh.server.server import BaseServer
@@ -153,6 +153,10 @@ sourceNetwork = ColumnDataSource(data=dict(
     index=[],
     color=[]
 ))
+sourceAnalogy = ColumnDataSource(data=dict(
+    words=[],
+    similarity=[]
+))
 
 ## Preparing Plots and UI elements
 TOOLS = "pan,wheel_zoom,zoom_in,zoom_out,box_zoom,reset,tap,save".split(
@@ -162,7 +166,7 @@ hover = HoverTool(tooltips=[
     ("Mot", "@mots"),
 ])
 TOOLS.append(hover)
-Cpalette = ['#E72018','#E17317','#DCC317','#9FD716','#4CD216','#15CC2D','#15C776','#14C2BC','#147CBD','#1434B8']
+Cpalette = ['#1434B8','#147CBD','#14C2BC','#15C776','#15CC2D','#4CD216','#9FD716','#DCC317','#E17317','#E72018']
 lcm = LinearColorMapper(palette=Cpalette, low=0, high=1)
 color_bar_p = ColorBar(color_mapper=lcm, location=(0, 0))
 color_bar_p2 = ColorBar(color_mapper=lcm, location=(0, 0))
@@ -192,9 +196,9 @@ p3 = Network(label="label", edges="edges", values="values", color="color", data_
 tsnePerplexity = Slider(start=5, end=100, value=30, step=1, width=120, title="Perplexity")
 tsneLearning = Slider(start=10, end=1000, value=200, step=1, width=120, title="Learning Rate")
 tsneIteration = Slider(start=300, end=5000, value=1000, step=50, width=120, title="Iterations")
-tsneAnimationPosition = Slider(start=0, end=tsneIteration.value, step=1, width=400, title="Goto Iteration")
+tsneAnimationPosition = Slider(start=0, end=tsneIteration.value, step=1, width=400, title="Aller à Iteration")
 tsneSpeed = Slider(start=10, end=100, value=70, step=1, width=120, title="Speed")
-neighborsNumber = Slider (start=3, end=20, value=10, width=120, title="N° Neighbors")
+neighborsNumber = Slider (start=3, end=20, value=10, width=120, title="N° Voisinages")
 neighborsApply = Button(label='Apply', button_type='success', width=60)
 tsneApply = Button(label='Apply', button_type='success', width=80)
 pauseB = Button(label='Pause', button_type='success', width=60)
@@ -204,19 +208,25 @@ modelSelect = Select(value=modelsList[0][0], options=modelsList)
 tsneMetricSelect = Select(title="metric", value='cosine', width=120, options=['braycurtis', 'canberra', 'chebyshev', 'cityblock', 'correlation', 'cosine', 'dice', 'euclidean', 'hamming', 'jaccard', 'kulsinski', 'mahalanobis', 'matching', 'minkowski', 'rogerstanimoto', 'russellrao', 'seuclidean', 'sokalmichener', 'sokalsneath', 'sqeuclidean', 'yule'])
 tsneLoading = Div()
 LoadingDiv = Div()
+informationDiv = Div(width=600)
 iterationCount = Div(width=100)
 minus = Div(text='-',width=15)
 plus = Div(text='+',width=15)
-word1 = TextInput(width=200, title="Analogy")
+word1 = TextInput(width=200, title="Analogie")
 word2 = TextInput(width=200, title="-")
 word3 = TextInput(width=200, title="+")
-calculateAnalogy = Button(label='Equals', button_type='success', width=60)
+calculateAnalogy = Button(label='Calculer', button_type='success', width=60)
 equals = Div(text=" ", width=120)
-searchBox = TextInput(width=150, placeholder="Search ...")
-searchButton = Button(label='Search', button_type='success', width=60)
+searchBox = TextInput(width=250, placeholder="Rechercher ...")
+searchButton = Button(label='Rechercher', button_type='success', width=100)
 equals.css_classes = ["center"]
 # p3.css_classes = ["blackBorder"]
-analogy = column(word1, word2, word3, row(calculateAnalogy, Spacer(width=20), equals))
+analogyColumns = [
+    TableColumn(field="words", title="Mots"),
+    TableColumn(field="similarity", title="Similarit\u00E9"),
+]
+analogyDataTable = DataTable(source=sourceAnalogy, columns=analogyColumns, index_position=None, width=500, height=200)
+analogy = row(column(word1, word2, word3, row(calculateAnalogy, Spacer(width=20), equals)), Spacer(width=40), analogyDataTable)
 tsneLayout = layout([
     [p2],
     [tsnePerplexity, Spacer(width=10), tsneLearning, Spacer(width=10), tsneIteration, Spacer(width=10), widgetbox(tsneMetricSelect, width=120), Spacer(width=20), widgetbox(tsneLoading, width=30)],
@@ -227,7 +237,7 @@ tab2 = Panel(child=tsneLayout, title="t-SNE")
 renderer = p2.select(dict(type=GlyphRenderer))
 ds = renderer[0].data_source
 
-tab3 = Panel(child=analogy, title="Analogy")
+tab3 = Panel(child=analogy, title="Analogie")
 tabs = Tabs(tabs=[tab1, tab2, tab3])
 
 l = layout([
@@ -247,13 +257,15 @@ newLayout = layout([
 	[d1],
 	[modelSelect],
 	[d2],
-	[widgetbox(searchBox, searchButton)],
+	[searchBox],
+    [searchButton, Spacer(width=20), informationDiv],
 	[d3],
 	[projectionMethode],
 	[p2],
 	[d4],
 	[similarityMethode],
 	[p3],
+    [analogy],
 ], sizing_mode='fixed')
 
 template = """
@@ -431,6 +443,8 @@ template = """
 {% block body %}
 <body>
     <h1 align="center">Exploration des repr&#233sentation vectorielles des mots</h1>
+    <h6 align="center"><i>Laboratoire ERIC</i></h6>
+    <h6 align="center"><i>par : Abderahmen Masmoudi</i></h6>
     {{ self.inner_body() }}
 </body>
 {% endblock %}
@@ -515,6 +529,20 @@ def handler(attr, old, new):
 handlerTSNE.update = False
 handler.update = False
 
+def pcaProcess():
+    pca = PCA(n_components=2)
+    pca.fit(vectors[0:number_of_elements])
+    transform = pca.transform(vectors[0:number_of_elements])
+    print("PCA done ...")
+    source.data['x'] = transform[:, 0]
+    source.data['y'] = transform[:, 1]
+    source.data['mots'] = words[0:number_of_elements]
+    source.data['color'] = ['#053061' for i in range(0,number_of_elements)]
+    source.selected.indices = []
+
+    source.trigger('data', None, source.data)
+
+
 def loadModelandPCA(modelName=modelSelect.value):
     global model
     global vectors
@@ -553,17 +581,8 @@ def loadModelandPCA(modelName=modelSelect.value):
     gr = _compute_ngrams(words[466], model.min_n, model.max_n)
     for g in gr:
         print(words[466], g, model.wv.similarity(words[466],g))
-    # PCA Test
-    pca = PCA(n_components=2)
-    pca.fit(vectors[0:number_of_elements])
-    transform = pca.transform(vectors[0:number_of_elements])
-    print("PCA done ...")
-
-    source.data['x'] = transform[:, 0]
-    source.data['y'] = transform[:, 1]
-    source.data['mots'] = words[0:number_of_elements]
-    source.data['color'] = ['#053061' for i in range(0,number_of_elements)]
-    source.selected.indices = []
+    # PCA
+    pcaProcess()
 
     sourceTSNE.data['x'] = [0 for i in range(0,number_of_elements)]
     sourceTSNE.data['y'] = [0 for i in range(0,number_of_elements)]
@@ -601,9 +620,10 @@ def tsneProcess():
     print("TSNE done ...")
     iterations = np.dstack(position.reshape(-1, 2) for position in positions)
     print("iterations done ...")
-    ds.data['x'] = TSNE_transform[:, 0]
-    ds.data['y'] = TSNE_transform[:, 1]
-    ds.trigger('data',ds.data,ds.data)
+    sourceTSNE.data['x'] = TSNE_transform[:, 0]
+    sourceTSNE.data['y'] = TSNE_transform[:, 1]
+    sourceTSNE.data['mots'] = words[0:number_of_elements]
+    sourceTSNE.trigger('data',None,sourceTSNE.data)
     sourceTemp.data = sourceTSNE.data
     tsneAnimationPosition.end = tsneIteration.value
     tsneAnimationPosition.value = tsneIteration.value
@@ -705,37 +725,50 @@ def changeModel(attr, old, new):
 def calcAnalogy():
     word = model.wv.most_similar(positive=[word1.value,word3.value], negative=[word2.value])
     equals.text = "<b> <center>"+word[0][0]+"</center> </b>"
+    sourceAnalogy.data["words"] = [word[i][0] for i in range(0,10)]
+    sourceAnalogy.data["similarity"] = [word[i][1] for i in range(0,10)]
+    sourceAnalogy.trigger('data', None, sourceAnalogy.data)
 
 def searchWord():
     global vectors
     global words
     word = searchBox.value
-    if (word in words[0:number_of_elements]):
-        handlerTSNE.update = True
-        handler.update = True
+    handlerTSNE.update = True
+    handler.update = True
+    if (word in words):
+        informationDiv.text = "Ce mot existe dans le vocabulaire."
         wordIndex = words.index(word)
         v = []
+        LoadingDiv.css_classes = ["loading"]
         if(tsneMetricSelect.value == 'euclidean'):
-            v = euclidean_distances(vectors[0:number_of_elements],[vectors[wordIndex]])
+            v = euclidean_distances(vectors,[vectors[wordIndex]])
             v = list(chain.from_iterable(v))
         else:
-            v = [cosSim( np.asarray([vectors[wordIndex]]), np.asarray([b]) )[0][0] for b in vectors[0:number_of_elements]]
-        print(v)
+            v = [cosSim( np.asarray([vectors[wordIndex]]), np.asarray([b]) )[0][0] for b in vectors]
         similarityList = list(zip([i for i in range(0, len(vectors)-1)], v))
         sortedSim = sorted(similarityList, key=lambda l:l[1], reverse=(tsneMetricSelect.value != 'euclidean'))
-        l = [wordIndex]
+        changedVectors = [vectors[i[0]] for i in sortedSim]
+        changedWords = [words[i[0]] for i in sortedSim]
+        changedValues = [v[i[0]] for i in sortedSim]
+        vectors = changedVectors
+        words = changedWords
+        v = changedValues
+        pcaProcess()
+        tsneProcess()
+        wordIndex = 0
+        l = [i for i in range(0,number_of_neighbors+1)]
         sourceNetwork.data['label'] = [words[wordIndex]]
         sourceNetwork.data['edges'] = [[]]
         sourceNetwork.data['values'] = [[]]
         sourceNetwork.data['index'] = [wordIndex]
         sourceNetwork.data['color'] = [generateColor()]
         color = generateColor()
-        for i in range(1, number_of_neighbors):
-            l.append(sortedSim[i][0])
-            sourceNetwork.data['label'].append(words[sortedSim[i][0]])
+        for i in range(1, number_of_neighbors+1):
+            # l.append(sortedSim[i][0])
+            sourceNetwork.data['label'].append(words[i])
             sourceNetwork.data['edges'].append([1])
             sourceNetwork.data['values'].append([sortedSim[i][1]])
-            sourceNetwork.data['index'].append(sortedSim[i][0])
+            sourceNetwork.data['index'].append(i)
             sourceNetwork.data['color'].append(color)
         p2_circle.data_source.add(data=v,name='color')
         p2_circle.data_source.selected.indices = l
@@ -744,29 +777,32 @@ def searchWord():
         p_circle.data_source.selected.indices = l
         p_circle.data_source.trigger('selected',None,p_circle.data_source.selected)
         sourceNetwork.trigger('data', None, sourceNetwork)
-        handlerTSNE.update = False
-        handler.update = False
     else:
-        handlerTSNE.update = True
-        handler.update = True
         newWordVector = model[searchBox.value]
+        LoadingDiv.css_classes = ["loading"]
         if(tsneMetricSelect.value == 'euclidean'):
-            v = euclidean_distances(vectors[0:number_of_elements],[newWordVector])
+            v = euclidean_distances(vectors,[newWordVector])
             v = list(chain.from_iterable(v))
         else:
-            v = [cosSim( np.asarray([newWordVector]), np.asarray([b]) )[0][0] for b in vectors[0:number_of_elements]]
-        print(v)
+            v = [cosSim( np.asarray([newWordVector]), np.asarray([b]) )[0][0] for b in vectors]
         similarityList = list(zip([i for i in range(0, len(vectors)-1)], v))
         sortedSim = sorted(similarityList, key=lambda l:l[1], reverse=(tsneMetricSelect.value != 'euclidean'))
-        l = [sortedSim[0][0]]
+        changedVectors = [vectors[i[0]] for i in sortedSim]
+        changedWords = [words[i[0]] for i in sortedSim]
+        vectors = changedVectors
+        words = changedWords
+        informationDiv.text = "Ce mot n'existe pas dans le vocabulaire. Le mot le plus proche trouvé est : "+words[sortedSim[0][0]]
+        pcaProcess()
+        tsneProcess()
+        l = [i for i in range(0,number_of_neighbors+1)]
         sourceNetwork.data['label'] = [words[sortedSim[0][0]]]
         sourceNetwork.data['edges'] = [[]]
         sourceNetwork.data['values'] = [[]]
         sourceNetwork.data['index'] = [sortedSim[0][0]]
         sourceNetwork.data['color'] = [generateColor()]
         color = generateColor()
-        for i in range(1, number_of_neighbors):
-            l.append(sortedSim[i][0])
+        for i in range(1, number_of_neighbors+1):
+            # l.append(sortedSim[i][0])
             sourceNetwork.data['label'].append(words[sortedSim[i][0]])
             sourceNetwork.data['edges'].append([1])
             sourceNetwork.data['values'].append([sortedSim[i][1]])
@@ -779,8 +815,9 @@ def searchWord():
         p_circle.data_source.selected.indices = l
         p_circle.data_source.trigger('selected',None,p_circle.data_source.selected)
         sourceNetwork.trigger('data', None, sourceNetwork)
-        handlerTSNE.update = False
-        handler.update = False
+
+    handlerTSNE.update = False
+    handler.update = False
 
 def radioPCA_TSNE(attr, old, new):
     if (new == 1):
@@ -793,10 +830,19 @@ def radioPCA_TSNE(attr, old, new):
 def radioSimilarity(attr, old, new):
     if(new == 1):
         tsneMetricSelect.value = 'euclidean'
+        changeColorPalette(0,4)
     else:
         tsneMetricSelect.value = 'cosine'
-    print(tsneMetricSelect.value)
+        changeColorPalette(0,1)
     chargeModel()
+
+def changeColorPalette(low, high):
+    global Cpalette
+
+    lcm.low = low
+    lcm.high = high
+    Cpalette = list(reversed(Cpalette))
+    lcm.palette = Cpalette
 
 pauseB.on_click(destroyAnimation)
 startB.on_click(animate)
