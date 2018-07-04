@@ -1,5 +1,5 @@
 import io
-import os
+import os, sys
 from itertools import chain
 from gensim.models import FastText
 from gensim.models.utils_any2vec import _ft_hash, _compute_ngrams
@@ -113,7 +113,7 @@ print("Starting execution ...")
 modelsList = [] # List of al model files found in the gensimModels folder
 for file in os.listdir("new_layout/gensimModels"):
     if file.endswith(".bin"):
-        pair = (os.path.abspath("new_layout/gensimModels/"+file), file[0:len(file)-4])
+        pair = (os.path.abspath(__file__[0:len(__file__)-7]+"gensimModels/"+file), file[0:len(file)-4])
         modelsList.append(pair)
 
 # Bokeh Data Sources
