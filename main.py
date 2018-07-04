@@ -18,14 +18,11 @@ from sklearn.manifold import TSNE
 from sklearn.metrics.pairwise import cosine_similarity as cosSim
 from sklearn.metrics.pairwise import euclidean_distances
 from bokeh.io import curdoc
-from bokeh.plotting import figure, show, output_file, ColumnDataSource
-from bokeh.models import CustomJS, Slider, ColumnDataSource, WidgetBox, HoverTool, TapTool, Div, CDSView, GroupFilter, Selection, LinearColorMapper, Circle, ColorBar
+from bokeh.plotting import figure, output_file, ColumnDataSource
+from bokeh.models import Slider, ColumnDataSource, WidgetBox, HoverTool, TapTool, Div, GroupFilter, Selection, LinearColorMapper, Circle, ColorBar
 from bokeh.layouts import layout, column, row, Spacer, widgetbox
-from bokeh.models.widgets import Button, AutocompleteInput, TextInput, Panel, Tabs, Select, RadioGroup, DataTable, TableColumn
-from bokeh.models.callbacks import CustomJS
+from bokeh.models.widgets import Button, TextInput, Panel, Tabs, Select, RadioGroup, DataTable, TableColumn
 from bokeh.models.renderers import GlyphRenderer
-from bokeh.server.server import BaseServer
-from bokeh.events import SelectionGeometry
 
 number_of_elements = 2000
 number_of_neighbors = 10
@@ -40,6 +37,7 @@ positions = []
 iterations = []
 
 # Storing each iteration for T-SNE
+# Changing the gradient_descent function to store each iteration in the positions list for animation purpose
 def _gradient_descent(objective, p0, it, n_iter, n_iter_check=1, n_iter_without_progress=300, momentum=0.8, learning_rate=200.0, min_gain=0.01, min_grad_norm=1e-7, verbose=0, args=None, kwargs=None):
     if args is None:
         args = []
@@ -99,7 +97,9 @@ def _gradient_descent(objective, p0, it, n_iter, n_iter_check=1, n_iter_without_
 sklearn.manifold.t_sne._gradient_descent = _gradient_descent
 
 def to_lowercase(sentences):
-    """Convert all characters to lowercase from list of tokenized words"""
+    """
+    Convert all characters to lowercase from list of tokenized words
+    """
     new_sentences = []
     for sentence in sentences:
         new_words = []
@@ -110,24 +110,13 @@ def to_lowercase(sentences):
     return new_sentences
 
 print("Starting execution ...")
-modelsList = []
+modelsList = [] # List of al model files found in the gensimModels folder
 for file in os.listdir("new_layout/gensimModels"):
     if file.endswith(".bin"):
         pair = (os.path.abspath("new_layout/gensimModels/"+file), file[0:len(file)-4])
         modelsList.append(pair)
-print(modelsList)
-#data = load_vectors("PRe/vectors/newWiki300.vec")
-## Training data with fasttext
-# model = fasttext.skipgram('PRe/text/wikipediaTXT.txt','model',bucket=50000)
-'''
-f = open("PRe_new/text/text.txt", encoding='ISO-8859-1')
-txt = f.read()
-List = [word_tokenize(t) for t in sent_tokenize(txt)]
-List = to_lowercase(List)
-model = FastText(List, sg=1, size=300, workers=4, min_count=1)
-'''
 
-# Representation with Bokeh
+# Bokeh Data Sources
 source = ColumnDataSource(data=dict(
     x=[],
     y=[],
@@ -166,6 +155,7 @@ hover = HoverTool(tooltips=[
     ("Mot", "@mots"),
 ])
 TOOLS.append(hover)
+# Selection colors
 Cpalette = ['#1434B8','#147CBD','#14C2BC','#15C776','#15CC2D','#4CD216','#9FD716','#DCC317','#E17317','#E72018']
 lcm = LinearColorMapper(palette=Cpalette, low=0, high=1)
 color_bar_p = ColorBar(color_mapper=lcm, location=(0, 0))
@@ -254,20 +244,21 @@ d4 = Div(text="<h2>Exploration des voisinages</h2><br><h3>Voisinages \u00E9tabli
 similarityMethode = RadioGroup(labels=["la similarit\u00E9 cosinus", "la distance euclidienne"], active=0)
 
 newLayout = layout([
-	[d1],
-	[modelSelect],
-	[d2],
-	[searchBox],
+    [d1],
+    [modelSelect],
+    [d2],
+    [searchBox],
     [searchButton, Spacer(width=20), informationDiv],
-	[d3],
-	[projectionMethode],
-	[p2],
-	[d4],
-	[similarityMethode],
-	[p3],
+    [d3],
+    [projectionMethode],
+    [p2],
+    [d4],
+    [similarityMethode],
+    [p3],
     [analogy],
 ], sizing_mode='fixed')
 
+# Template for the generated HTML document using jinja2 templating language
 template = """
 {% block preamble %}
 <link href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.css" rel="stylesheet" type="text/css">
@@ -449,6 +440,8 @@ template = """
 </body>
 {% endblock %}
 """
+
+# Adding elements to the document
 curdoc().add_root(LoadingDiv)
 curdoc().title = "Embedding"
 curdoc().template = template
@@ -458,12 +451,19 @@ nltk.download('punkt')
 
 # Neighbors
 def generateColor():
+    """
+        Generate and return a random color
+    """
     color = "#"+''.join([random.choice('0123456789ABCDEF') for j in range(6)])
     return color
-def handlerTSNE(attr, old, new):
+def selectionTSNE(attr, old, new):
+    """
+        Handler function called when the user selects a word from the TSNE plot
+        Finds nearest neighbors to the selected word and creates the corresponding network
+    """
     global vectors
-    if (len(new.indices) != 0) and (handlerTSNE.update == False) :
-        handlerTSNE.update = True
+    if (len(new.indices) != 0) and (selectionTSNE.update == False) :
+        selectionTSNE.update = True
         wordIndex = new.indices[0]
         if(tsneMetricSelect.value == 'euclidean'):
             v = euclidean_distances(vectors[0:number_of_elements],[vectors[wordIndex]])
@@ -492,12 +492,16 @@ def handlerTSNE(attr, old, new):
         p2_circle.data_source.selected.indices = l
         p2_circle.data_source.trigger('selected',None,p2_circle.data_source.selected)
         sourceNetwork.trigger('data', None, sourceNetwork)
-        handlerTSNE.update = False
+        selectionTSNE.update = False
 
-def handler(attr, old, new):
+def selection(attr, old, new):
+    """
+        Handler function called when the user selects a word from the TSNE plot
+        Finds nearest neighbors to the selected word and creates the corresponding network
+    """
     global vectors
-    if (len(new.indices) != 0) and (handler.update == False) :
-        handler.update = True
+    if (len(new.indices) != 0) and (selection.update == False) :
+        selection.update = True
         wordIndex = new.indices[0]
         if(tsneMetricSelect.value == 'euclidean'):
             v = euclidean_distances(vectors[0:number_of_elements],[vectors[wordIndex]])
@@ -524,12 +528,15 @@ def handler(attr, old, new):
         p_circle.data_source.selected.indices = l
         p_circle.data_source.trigger('selected',None,p_circle.data_source.selected)
         sourceNetwork.trigger('data', None, sourceNetwork)
-        handler.update = False
+        selection.update = False
         
-handlerTSNE.update = False
-handler.update = False
+selectionTSNE.update = False
+selection.update = False
 
 def pcaProcess():
+    """
+        Apply PCA on the first 'number_of_elements' word vectors and store the result in source
+    """
     pca = PCA(n_components=2)
     pca.fit(vectors[0:number_of_elements])
     transform = pca.transform(vectors[0:number_of_elements])
@@ -542,8 +549,10 @@ def pcaProcess():
 
     source.trigger('data', None, source.data)
 
-
 def loadModelandPCA(modelName=modelSelect.value):
+    """
+        Load selected model from the selection box and applies PCA on the first 'number_of_elements' word vectors
+    """
     global model
     global vectors
     global words
@@ -607,8 +616,11 @@ def loadModelandPCA(modelName=modelSelect.value):
 
     LoadingDiv.css_classes = []
 
-# T-SNE representation Function
+#T-SNE representation Function
 def tsneProcess():
+    """
+        Apply t-SNE reduction on the first 'number_of_elements' word vectors
+    """
     global positions
     global iterations
     global vectors
@@ -632,6 +644,9 @@ def tsneProcess():
 #T-SNE Animation Function
 iterationNumber = 0
 def tsne_animation(length=number_of_elements, div=iterationCount, goto=False):
+    """
+        Create animation from the t-SNE transformation
+    """
     global ds
     global iterationNumber
     global iterations
@@ -642,7 +657,7 @@ def tsne_animation(length=number_of_elements, div=iterationCount, goto=False):
         
         ds.trigger('data',ds.data,ds.data)
         if(goto==False):
-        	tsneAnimationPosition.value = iterationNumber
+            tsneAnimationPosition.value = iterationNumber
         iterationNumber += 1
         div.text = "Iteration N&#176 : " + str(iterationNumber)
     else:
@@ -650,16 +665,25 @@ def tsne_animation(length=number_of_elements, div=iterationCount, goto=False):
 
 animation = None
 def animate():
+    """
+        Function used to start or resume animation when user clicks on start/resume
+    """
     global animation
     if (animation == None):
         animation = curdoc().add_periodic_callback(tsne_animation,110-tsneSpeed.value)
 def destroyAnimation():
+    """
+        Used to pause animation when user clicks on stop button
+    """
     global animation
     if (animation != None):
         curdoc().remove_periodic_callback(animation)
         animation = None
         startB.label = "Resume"
 def stopAnimation():
+    """
+        Used to stop animation when user clicks on stop button
+    """
     global animation
     global iterationNumber
     if (animation != None):
@@ -668,22 +692,35 @@ def stopAnimation():
         iterationNumber = 0
         startB.label = "Start"
 def changeSpeed(attr, old, new):
+    """
+        Change the speed of the t-SNE animation based on the value of the Slider tsneSpeed
+    """
     global animation
     if (animation != None):
         curdoc().remove_periodic_callback(animation)
         animation = None
         animation = curdoc().add_periodic_callback(tsne_animation,int(110-new))
+
 def gotoPosition(attr, old, new):
-	global iterationNumber
-	iterationNumber = new
-	tsne_animation(goto=True)
+    """
+        Go to specific iteration in the t-SNE animation
+    """
+    global iterationNumber
+    iterationNumber = new
+    tsne_animation(goto=True)
 def tabChange(attr, old, new):
+    """
+        Starts the t-SNE transformation when changing to the t-SNE tab for the first time
+    """
     if(new == 1) and (tabChange.first == False):
         tabChange.first = True
         tsneProcess()
 tabChange.first = False
 
 def addNeighborNodes(index):
+    """
+        Find neighbor words when double clicking on a node and adds the new neighbor nodes to the Netwrok representation
+    """
     global vectors
     wordIndex = sourceNetwork.data['index'][index]
     if(tsneMetricSelect.value == 'euclidean'):
@@ -711,18 +748,30 @@ def selectNode(attr, old, new):
     addNeighborNodes(new)
 
 def changeNeighbors(attr, old, new):
-	global number_of_neighbors
-	number_of_neighbors = new
+    """
+        Change the number of neighbors according to the value of the Slider 'neighborsNumber'
+    """
+    global number_of_neighbors
+    number_of_neighbors = new
 
 def chargeModel():
+    """
+        Charge model at the start of execution
+    """
     loadModelandPCA(modelName=modelSelect.value)
     tsneProcess()
 
 def changeModel(attr, old, new):
+    """
+        Charge selected model from the selection box
+    """
     loadModelandPCA(modelName=new)
     tsneProcess()
 
 def calcAnalogy():
+    """
+        Find most similar word
+    """
     word = model.wv.most_similar(positive=[word1.value,word3.value], negative=[word2.value])
     equals.text = "<b> <center>"+word[0][0]+"</center> </b>"
     sourceAnalogy.data["words"] = [word[i][0] for i in range(0,10)]
@@ -730,11 +779,14 @@ def calcAnalogy():
     sourceAnalogy.trigger('data', None, sourceAnalogy.data)
 
 def searchWord():
+    """
+        Search for first 'number_of_elements' most similar words to the typed word and and applies PCA and t-SNE on thein vectors
+    """
     global vectors
     global words
     word = searchBox.value
-    handlerTSNE.update = True
-    handler.update = True
+    selectionTSNE.update = True
+    selection.update = True
     if (word in words):
         informationDiv.text = "Ce mot existe dans le vocabulaire."
         wordIndex = words.index(word)
@@ -791,7 +843,7 @@ def searchWord():
         changedWords = [words[i[0]] for i in sortedSim]
         vectors = changedVectors
         words = changedWords
-        informationDiv.text = "Ce mot n'existe pas dans le vocabulaire. Le mot le plus proche trouvé est : "+words[sortedSim[0][0]]
+        informationDiv.text = "Ce mot n'existe pas dans le vocabulaire. Le mot le plus proche trouv\u00E9 est : "+words[sortedSim[0][0]]
         pcaProcess()
         tsneProcess()
         l = [i for i in range(0,number_of_neighbors+1)]
@@ -816,8 +868,8 @@ def searchWord():
         p_circle.data_source.trigger('selected',None,p_circle.data_source.selected)
         sourceNetwork.trigger('data', None, sourceNetwork)
 
-    handlerTSNE.update = False
-    handler.update = False
+    selectionTSNE.update = False
+    selection.update = False
 
 def radioPCA_TSNE(attr, old, new):
     if (new == 1):
@@ -853,8 +905,8 @@ neighborsNumber.on_change('value',changeNeighbors)
 modelSelect.on_change('value', changeModel)
 tabs.on_change('active', tabChange)
 tsneApply.on_click(tsneProcess)
-p_circle.data_source.on_change('selected',handler)
-p2_circle.data_source.on_change('selected',handlerTSNE)
+p_circle.data_source.on_change('selected',selection)
+p2_circle.data_source.on_change('selected',selectionTSNE)
 p3.on_change('selected',selectNode)
 calculateAnalogy.on_click(calcAnalogy)
 searchButton.on_click(searchWord)
