@@ -25,3 +25,15 @@ gensimModels/1932_1971.bin.wv.vectors_ngrams.npy
 gensimModels/1972_2014.bin
 gensimModels/1972_2014.bin.trainables.vectors_ngrams_lockf.npy
 gensimModels/1972_2014.bin.wv.vectors_ngrams.npy
+gensimModels/1892_1931_lowercase.bin
+gensimModels/1892_1931_lowercase.bin.trainables.vectors_ngrams_lockf.npy
+gensimModels/1892_1931_lowercase.bin.wv.vectors_ngrams.npy
+gensimModels/1932_1971_lowercase.bin
+gensimModels/1932_1971_lowercase.bin.trainables.vectors_ngrams_lockf.npy
+gensimModels/1932_1971_lowercase.bin.wv.vectors_ngrams.npy
+gensimModels/1972_2014_lowercase.bin
+gensimModels/1972_2014_lowercase.bin.trainables.vectors_ngrams_lockf.npy
+gensimModels/1972_2014_lowercase.bin.wv.vectors_ngrams.npy
+gensimModels/model_lowercase.bin
+gensimModels/model_lowercase.bin.trainables.vectors_ngrams_lockf.npy
+gensimModels/model_lowercase.bin.wv.vectors_ngrams.npy
