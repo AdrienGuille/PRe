@@ -8,7 +8,6 @@ Afin d'executer l'application, ces bibliothèques doivent être installées :
 
 * [Bokeh](https://bokeh.pydata.org/) version 0.13
 * [NumPy](http://www.numpy.org/) et [SciPy](https://www.scipy.org/)
-* [NLTK](https://www.nltk.org/)
 * [Scikit-Learn](http://scikit-learn.org/)
 * [Gensim](https://radimrehurek.com/gensim/index.html)
 
