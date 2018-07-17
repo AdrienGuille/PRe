@@ -9,10 +9,9 @@ import numpy as np
 from numpy import linalg
 from numpy.linalg import norm
 from scipy.spatial.distance import squareform, pdist
-import nltk
-from nltk.tokenize import sent_tokenize, word_tokenize
 import sklearn
 import random
+import threading
 from sklearn.decomposition import PCA
 from sklearn.manifold import TSNE
 from sklearn.metrics.pairwise import cosine_similarity as cosSim
@@ -24,7 +23,7 @@ from bokeh.layouts import layout, column, row, Spacer, widgetbox
 from bokeh.models.widgets import Button, TextInput, Panel, Tabs, Select, RadioGroup, DataTable, TableColumn
 from bokeh.models.renderers import GlyphRenderer
 
-number_of_elements = 2000
+number_of_elements = 1000
 number_of_neighbors = 10
 
 model = None
@@ -96,24 +95,12 @@ def _gradient_descent(objective, p0, it, n_iter, n_iter_check=1, n_iter_without_
     return p, error, i
 sklearn.manifold.t_sne._gradient_descent = _gradient_descent
 
-def to_lowercase(sentences):
-    """
-    Convert all characters to lowercase from list of tokenized words
-    """
-    new_sentences = []
-    for sentence in sentences:
-        new_words = []
-        for word in sentence:
-            new_word = word.lower()
-            new_words.append(new_word)
-        new_sentences.append(new_words)
-    return new_sentences
-
 print("Starting execution ...")
 modelsList = [] # List of al model files found in the gensimModels folder
-for file in os.listdir("new_layout/gensimModels"):
+path = __file__[0:len(__file__)-7]+"gensimModels/"
+for file in os.listdir(path):
     if file.endswith(".bin"):
-        pair = (os.path.abspath(__file__[0:len(__file__)-7]+"gensimModels/"+file), file[0:len(file)-4])
+        pair = (os.path.abspath(path+file), file[0:len(file)-4])
         modelsList.append(pair)
 
 # Bokeh Data Sources
@@ -160,7 +147,7 @@ Cpalette = ['#1434B8','#147CBD','#14C2BC','#15C776','#15CC2D','#4CD216','#9FD716
 lcm = LinearColorMapper(palette=Cpalette, low=0, high=1)
 color_bar_p = ColorBar(color_mapper=lcm, location=(0, 0))
 color_bar_p2 = ColorBar(color_mapper=lcm, location=(0, 0))
-selected_circle = Circle(radius=2000, fill_alpha=1, fill_color={'field' : 'color', 'transform':lcm}, line_color={'field' : 'color', 'transform':lcm})
+selected_circle = Circle(fill_alpha=1, fill_color={'field' : 'color', 'transform':lcm}, line_color={'field' : 'color', 'transform':lcm})
 
 #PCA Plot
 p = figure(plot_width=600, plot_height=400, tools=TOOLS, output_backend="webgl", active_scroll='wheel_zoom')
@@ -185,7 +172,7 @@ p3 = Network(label="label", edges="edges", values="values", color="color", data_
 #Widgets
 tsnePerplexity = Slider(start=5, end=100, value=30, step=1, width=120, title="Perplexity")
 tsneLearning = Slider(start=10, end=1000, value=200, step=1, width=120, title="Learning Rate")
-tsneIteration = Slider(start=300, end=5000, value=1000, step=50, width=120, title="Iterations")
+tsneIteration = Slider(start=300, end=5000, value=500, step=50, width=120, title="Iterations")
 tsneAnimationPosition = Slider(start=0, end=tsneIteration.value, step=1, width=400, title="Aller à Iteration")
 tsneSpeed = Slider(start=10, end=100, value=70, step=1, width=120, title="Speed")
 neighborsNumber = Slider (start=3, end=20, value=10, width=120, title="N° Voisinages")
@@ -194,11 +181,12 @@ tsneApply = Button(label='Apply', button_type='success', width=80)
 pauseB = Button(label='Pause', button_type='success', width=60)
 startB = Button(label='Start', button_type='success', width=60)
 stopB = Button(label='Stop', button_type='success', width=60)
-modelSelect = Select(value=modelsList[0][0], options=modelsList)
-tsneMetricSelect = Select(title="metric", value='cosine', width=120, options=['braycurtis', 'canberra', 'chebyshev', 'cityblock', 'correlation', 'cosine', 'dice', 'euclidean', 'hamming', 'jaccard', 'kulsinski', 'mahalanobis', 'matching', 'minkowski', 'rogerstanimoto', 'russellrao', 'seuclidean', 'sokalmichener', 'sokalsneath', 'sqeuclidean', 'yule'])
+modelSelect = Select(value="Choisir un modèle" ,options=modelsList)
+tsneMetricSelect = Select(title="metrique", value='cosine', width=120, options=['braycurtis', 'canberra', 'chebyshev', 'cityblock', 'correlation', 'cosine', 'dice', 'euclidean', 'hamming', 'jaccard', 'kulsinski', 'mahalanobis', 'matching', 'minkowski', 'rogerstanimoto', 'russellrao', 'seuclidean', 'sokalmichener', 'sokalsneath', 'sqeuclidean', 'yule'])
 tsneLoading = Div()
 LoadingDiv = Div()
 informationDiv = Div(width=600)
+NumberElementsDiv = Div(width=250)
 iterationCount = Div(width=100)
 minus = Div(text='-',width=15)
 plus = Div(text='+',width=15)
@@ -245,7 +233,7 @@ similarityMethode = RadioGroup(labels=["la similarit\u00E9 cosinus", "la distanc
 
 newLayout = layout([
     [d1],
-    [modelSelect],
+    [modelSelect, Spacer(width=20), NumberElementsDiv],
     [d2],
     [searchBox],
     [searchButton, Spacer(width=20), informationDiv],
@@ -447,8 +435,6 @@ curdoc().title = "Embedding"
 curdoc().template = template
 curdoc().add_root(newLayout)
 
-nltk.download('punkt')
-
 # Neighbors
 def generateColor():
     """
@@ -571,7 +557,6 @@ def loadModelandPCA(modelName=modelSelect.value):
     # vectors = [list(line) for line in data.values()]
     # words = list(data)
     vectors = model.wv.syn0
-    print(len(vectors))
     words = model.wv.index2word
     ngrams = []
     vectors_ngrams = []
@@ -590,6 +575,10 @@ def loadModelandPCA(modelName=modelSelect.value):
     gr = _compute_ngrams(words[466], model.min_n, model.max_n)
     for g in gr:
         print(words[466], g, model.wv.similarity(words[466],g))
+    
+    NumberElementsDiv.text = "Nombre total de mots : "+str(len(words))
+    d3.text = "<h2>Visualisation globale des repr\u00E9sentations</h2><br><h3>Vecteurs de dimension "+str(len(vectors[0]))+" projet\u00E9s dans le plan selon :</h3>"
+
     # PCA
     pcaProcess()
 
@@ -830,6 +819,7 @@ def searchWord():
         p_circle.data_source.trigger('selected',None,p_circle.data_source.selected)
         sourceNetwork.trigger('data', None, sourceNetwork)
     else:
+        informationDiv.text = "Ce mot n'existe pas dans le vocabulaire."
         newWordVector = model[searchBox.value]
         LoadingDiv.css_classes = ["loading"]
         if(tsneMetricSelect.value == 'euclidean'):
@@ -843,7 +833,7 @@ def searchWord():
         changedWords = [words[i[0]] for i in sortedSim]
         vectors = changedVectors
         words = changedWords
-        informationDiv.text = "Ce mot n'existe pas dans le vocabulaire. Le mot le plus proche trouv\u00E9 est : "+words[sortedSim[0][0]]
+        informationDiv.text =  informationDiv.text+" Le mot le plus proche trouv\u00E9 est : "+words[sortedSim[0][0]]
         pcaProcess()
         tsneProcess()
         l = [i for i in range(0,number_of_neighbors+1)]
@@ -913,4 +903,4 @@ searchButton.on_click(searchWord)
 projectionMethode.on_change('active', radioPCA_TSNE)
 similarityMethode.on_change('active', radioSimilarity)
 
-curdoc().add_timeout_callback(chargeModel,3000)
+#curdoc().add_timeout_callback(chargeModel,3000)
