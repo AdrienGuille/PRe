@@ -6,10 +6,11 @@ Cette application permet de visualiser en deux dimensions les mots représentés
 
 Afin d'executer l'application, ces bibliothèques doivent être installées :
 
-* [Bokeh](https://bokeh.pydata.org/) version 0.13
+* [Bokeh](https://bokeh.pydata.org/) version >= 0.13
 * [NumPy](http://www.numpy.org/) et [SciPy](https://www.scipy.org/)
 * [Scikit-Learn](http://scikit-learn.org/)
 * [Gensim](https://radimrehurek.com/gensim/index.html)
+* [Node.js](https://nodejs.org/) version >= 6.10.0
 
 Il est recommandé d'utiliser le logiciel [Anaconda](https://www.anaconda.com/) afin d'installer les dépendances mentionnés ci-dessus.
 
