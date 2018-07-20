@@ -25,7 +25,7 @@ from bokeh.models.widgets import Button, TextInput, Panel, Tabs, Select, RadioGr
 from bokeh.models.renderers import GlyphRenderer
 from bokeh.events import Reset,MouseEnter
 
-number_of_elements = 1000
+number_of_elements = 2000
 number_of_neighbors = 10
 
 model = None
@@ -445,12 +445,13 @@ def selectionTSNE(attr, old, new):
         sourceNetwork.data['color'] = [generateColor()]
         color = generateColor()
         for i in range(1, number_of_neighbors+1):
-            l.append(sortedSim[i][0])
             sourceNetwork.data['label'].append(words[sortedSim[i][0]])
             sourceNetwork.data['edges'].append([1])
             sourceNetwork.data['values'].append([sortedSim[i][1]])
             sourceNetwork.data['index'].append(sortedSim[i][0])
             sourceNetwork.data['color'].append(color)
+        for i in range(1, number_of_elements+1):
+        	l.append(sortedSim[i][0])
         p2_circle.data_source.selected.indices = l
         p2_circle.data_source.trigger('selected',None,p2_circle.data_source.selected)
         sourceNetwork.trigger('data', None, sourceNetwork)
