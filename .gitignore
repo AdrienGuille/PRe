@@ -1,3 +1,4 @@
-model/model.bin
-model/model.vec
-text/text.txt
+*.bin
+*.npy
+*.vec
+*.csv
